@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Stake Calc">
+  <title>Stake Calculator</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      background: #0f0f0f;
+      font-family: -apple-system, 'SF Pro Display', sans-serif;
+      padding: env(safe-area-inset-top, 20px) 16px env(safe-area-inset-bottom, 20px);
+      min-height: 100vh;
+    }
+
+    .header { padding: 20px 4px 24px; }
+    .header .sub { color: #f97316; font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 6px; }
+    .header h1  { color: #fff; font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
+    .header p   { color: #555; font-size: 14px; margin-top: 4px; }
+
+    .card { background: #1a1a1a; border-radius: 20px; padding: 20px; border: 1px solid #252525; margin-bottom: 12px; }
+
+    .field { margin-bottom: 20px; }
+    .field:last-child { margin-bottom: 0; }
+
+    label {
+      color: #666; font-size: 11px; font-weight: 600;
+      letter-spacing: 1px; text-transform: uppercase; display: block; margin-bottom: 10px;
+    }
+
+    input[type="number"] {
+      width: 100%; background: #111; border: 1.5px solid #252525;
+      border-radius: 12px; padding: 16px; color: #fff;
+      font-size: 20px; font-family: -apple-system, sans-serif;
+      outline: none; transition: border-color 0.2s; -webkit-appearance: none;
+    }
+    input[type="number"]:focus { border-color: #f97316; }
+    input[type="number"]::placeholder { color: #2a2a2a; }
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+    .btn-row { display: flex; gap: 8px; }
+    .opt-btn {
+      flex: 1; padding: 14px 4px; border-radius: 12px;
+      border: 1.5px solid #252525; background: #111;
+      color: #555; font-weight: 700; font-size: 13px;
+      cursor: pointer; text-align: center; line-height: 1.4;
+      -webkit-appearance: none; transition: all 0.15s;
+    }
+    .opt-btn.active { border-color: #f97316; background: #f97316; color: #fff; }
+    .opt-btn .sub-label { font-size: 10px; font-weight: 500; display: block; margin-top: 2px; opacity: 0.8; }
+
+    .hint { color: #444; font-size: 12px; margin-top: 8px; min-height: 18px; }
+
+    .divider { height: 1px; background: #222; margin: 4px 0; }
+
+    /* Result boxes */
+    .result-box { border-radius: 16px; padding: 22px 20px; text-align: center; margin-bottom: 12px; }
+    .result-box.ok     { background: #111; border: 1.5px solid #f97316; }
+    .result-box.capped { background: #111; border: 1.5px solid #eab308; }
+    .result-label { font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
+    .result-box.ok     .result-label { color: #666; }
+    .result-box.capped .result-label { color: #eab308; }
+    .result-number { font-size: 52px; font-weight: 800; line-height: 1; letter-spacing: -1px; }
+    .result-box.ok     .result-number { color: #f97316; }
+    .result-box.capped .result-number { color: #eab308; }
+    .result-sub { color: #555; font-size: 13px; margin-top: 6px; }
+
+    .pips-box {
+      background: #111; border: 1.5px solid #3b82f6;
+      border-radius: 16px; padding: 18px 20px;
+      margin-bottom: 12px; display: flex;
+      align-items: center; justify-content: space-between;
+    }
+    .pips-label { color: #3b82f6; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; }
+    .pips-sub   { color: #444; font-size: 12px; }
+    .pips-num   { color: #3b82f6; font-size: 42px; font-weight: 800; line-height: 1; text-align: right; letter-spacing: -1px; }
+    .pips-unit  { color: #444; font-size: 12px; text-align: right; margin-top: 2px; }
+
+    .pnl-box { border-radius: 16px; padding: 22px 20px; text-align: center; margin-bottom: 12px; }
+    .pnl-box.profit { background: #0a1a0a; border: 1.5px solid #22c55e; }
+    .pnl-box.loss   { background: #1a0a0a; border: 1.5px solid #ef4444; }
+    .pnl-label-inner { font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; color: #555; }
+    .pnl-number { font-size: 48px; font-weight: 800; line-height: 1; letter-spacing: -1px; }
+    .pnl-box.profit .pnl-number { color: #22c55e; }
+    .pnl-box.loss   .pnl-number { color: #ef4444; }
+    .pnl-sub { color: #555; font-size: 13px; margin-top: 6px; }
+
+    .warning {
+      background: #1c1600; border: 1.5px solid #eab308;
+      border-radius: 12px; padding: 14px 16px;
+      margin-bottom: 12px; font-size: 13px;
+      color: #eab308; line-height: 1.6;
+    }
+    .warning strong { font-weight: 700; }
+
+    .section-title {
+      color: #333; font-size: 10px; font-weight: 700;
+      letter-spacing: 2px; text-transform: uppercase;
+      margin-bottom: 10px; padding-bottom: 8px;
+      border-bottom: 1px solid #222;
+    }
+
+    .breakdown { display: flex; flex-direction: column; gap: 6px; }
+    .breakdown-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 12px 14px; background: #111; border-radius: 10px;
+    }
+    .breakdown-row .lbl { color: #444; font-size: 14px; }
+    .breakdown-row .val { color: #bbb; font-size: 14px; font-weight: 600; }
+    .breakdown-row .val.warn { color: #eab308; }
+
+    .empty { text-align: center; padding: 24px; color: #2a2a2a; font-size: 14px; }
+
+    .clear-btn {
+      width: 100%; padding: 18px; background: #111;
+      border: 1.5px solid #252525; border-radius: 14px;
+      color: #444; font-size: 15px; font-weight: 600;
+      cursor: pointer; margin-top: 4px; -webkit-appearance: none;
+      transition: all 0.15s;
+    }
+    .clear-btn:active { background: #1a1a1a; color: #777; }
+
+    .footer { text-align: center; color: #2a2a2a; font-size: 11px; padding: 16px 0 8px; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="sub">Pepperstone cTrader</div>
+    <h1>Stake Calculator</h1>
+    <p>Spread betting position sizer</p>
+  </div>
+
+  <!-- Inputs card -->
+  <div class="card">
+
+    <div class="field">
+      <label for="capital">Total Capital (£)</label>
+      <input type="number" inputmode="decimal" id="capital" placeholder="100000" oninput="calculate()">
+    </div>
+
+    <div class="field">
+      <label>Risk Per Trade</label>
+      <div class="btn-row" id="risk-btns">
+        <button class="opt-btn" data-val="0.5" onclick="selectBtn('risk-btns',this);calculate()">0.5%</button>
+        <button class="opt-btn active" data-val="1" onclick="selectBtn('risk-btns',this);calculate()">1%</button>
+        <button class="opt-btn" data-val="1.5" onclick="selectBtn('risk-btns',this);calculate()">1.5%</button>
+        <button class="opt-btn" data-val="2" onclick="selectBtn('risk-btns',this);calculate()">2%</button>
+      </div>
+      <div class="hint" id="risk-hint"></div>
+    </div>
+
+    <div class="field">
+      <label for="entry">Entry Price</label>
+      <input type="number" inputmode="decimal" id="entry" placeholder="23728.7" oninput="calculate()">
+    </div>
+
+    <div class="field">
+      <label for="sl">Stop Loss Price</label>
+      <input type="number" inputmode="decimal" id="sl" placeholder="23691" oninput="calculate()">
+    </div>
+
+    <div class="field">
+      <label>Instrument</label>
+      <div class="btn-row" id="inst-btns">
+        <button class="opt-btn active" data-lev="20" data-pip="1" onclick="selectBtn('inst-btns',this);calculate()">NAS100<span class="sub-label">1:20</span></button>
+        <button class="opt-btn" data-lev="20" data-pip="0.1" onclick="selectBtn('inst-btns',this);calculate()">Gold<span class="sub-label">1:20</span></button>
+      </div>
+      <div class="hint" id="inst-hint">Margin rate: 5.0% · 1 pip = 1 pt</div>
+    </div>
+
+  </div>
+
+  <!-- Results card -->
+  <div class="card">
+    <div id="output"><div class="empty">Fill in entry & stop loss to calculate</div></div>
+  </div>
+
+  <!-- P&L card -->
+  <div class="card">
+    <div class="field">
+      <label for="exit">Exit Price <span style="color:#333;font-weight:400;text-transform:none;letter-spacing:0;font-size:10px">optional</span></label>
+      <input type="number" inputmode="decimal" id="exit" placeholder="23800" oninput="calcPnl()">
+    </div>
+    <div id="pnl-output"></div>
+  </div>
+
+  <!-- Custom stake card -->
+  <div class="card">
+    <div class="field">
+      <label for="custom-stake">Custom Stake <span style="color:#333;font-weight:400;text-transform:none;letter-spacing:0;font-size:10px">optional</span></label>
+      <input type="number" inputmode="decimal" id="custom-stake" placeholder="10.0" oninput="calcComparison()" step="0.1">
+    </div>
+    <div id="comparison-output"></div>
+  </div>
+
+  <div class="card">
+    <button class="clear-btn" onclick="clearFields()">Clear Fields</button>
+  </div>
+
+  <div class="footer">For use with Pepperstone Spread Betting account</div>
+
+<script>
+  function selectBtn(groupId, clicked) {
+    document.getElementById(groupId).querySelectorAll('.opt-btn').forEach(function(b) { b.classList.remove('active'); });
+    clicked.classList.add('active');
+    if (groupId === 'inst-btns') {
+      var lev = parseFloat(clicked.getAttribute('data-lev'));
+      var pip = clicked.getAttribute('data-pip');
+      document.getElementById('inst-hint').textContent = 'Margin rate: ' + (100/lev).toFixed(1) + '% · 1 pip = ' + pip + ' pt';
+    }
+  }
+
+  function getActive(groupId) {
+    return document.querySelector('#' + groupId + ' .opt-btn.active');
+  }
+
+  function getVars() {
+    return {
+      capital : parseFloat(document.getElementById('capital').value),
+      entry   : parseFloat(document.getElementById('entry').value),
+      sl      : parseFloat(document.getElementById('sl').value),
+      exit    : parseFloat(document.getElementById('exit').value),
+      custom  : parseFloat(document.getElementById('custom-stake').value),
+      risk    : getActive('risk-btns') ? parseFloat(getActive('risk-btns').getAttribute('data-val')) : null,
+      lev     : getActive('inst-btns') ? parseFloat(getActive('inst-btns').getAttribute('data-lev')) : null,
+      pip     : getActive('inst-btns') ? parseFloat(getActive('inst-btns').getAttribute('data-pip')) : null
+    };
+  }
+
+  function calcStakes(v) {
+    var stopDist       = Math.abs(v.entry - v.sl);
+    var riskAmt        = v.capital * v.risk / 100;
+    var idealStakes    = riskAmt / stopDist;
+    var marginPerStake = v.entry / v.lev;
+    var maxByMargin    = v.capital / marginPerStake;
+    var isCapped       = idealStakes > maxByMargin;
+    var finalStakes    = Math.floor(Math.min(idealStakes, maxByMargin) * 10) / 10;
+    return { stopDist: stopDist, riskAmt: riskAmt, idealStakes: idealStakes, marginPerStake: marginPerStake, maxByMargin: maxByMargin, isCapped: isCapped, finalStakes: finalStakes };
+  }
+
+  function calculate() {
+    var v = getVars();
+    var hint = document.getElementById('risk-hint');
+    hint.textContent = (v.capital > 0 && v.risk) ? '= £' + (v.capital * v.risk / 100).toFixed(2) + ' at risk' : '';
+
+    var out = document.getElementById('output');
+    if (!v.capital || !v.entry || !v.sl || v.entry === v.sl || !v.risk || !v.lev || !v.pip) {
+      out.innerHTML = '<div class="empty">Fill in entry & stop loss to calculate</div>';
+      return;
+    }
+
+    var s = calcStakes(v);
+    var pips = (s.stopDist / v.pip).toFixed(1);
+    var marginRequired  = s.finalStakes * s.marginPerStake;
+    var marginRemaining = v.capital - marginRequired;
+
+    var html = '';
+    if (s.isCapped) {
+      html += '<div class="warning"><strong>⚠ Margin limit reached</strong><br>Ideal stake of <strong>' + s.idealStakes.toFixed(2) + '</strong> exceeds available margin. Capped to <strong>' + s.finalStakes.toFixed(1) + '</strong>.</div>';
+    }
+
+    html += '<div class="result-box ' + (s.isCapped ? 'capped' : 'ok') + '"><div class="result-label">' + (s.isCapped ? '⚠ Margin Capped' : 'Enter in cTrader') + '</div><div class="result-number">' + s.finalStakes.toFixed(1) + '</div><div class="result-sub">Quantity (Stakes)</div></div>';
+
+    html += '<div class="pips-box"><div><div class="pips-label">Stop Loss Distance</div><div class="pips-sub">Type into cTrader pips field</div></div><div><div class="pips-num">' + pips + '</div><div class="pips-unit">pips</div></div></div>';
+
+    html += '<div class="section-title">Breakdown</div><div class="breakdown">';
+    [
+      { l: 'Stop Distance',    v: s.stopDist.toFixed(2) + ' pts' },
+      { l: 'Risk Amount',      v: '£' + s.riskAmt.toFixed(2) },
+      { l: 'Ideal Stake',      v: s.idealStakes.toFixed(2) + (s.isCapped ? ' (reduced)' : ''), w: s.isCapped },
+      { l: 'Actual Risk',      v: '£' + (s.finalStakes * s.stopDist).toFixed(2) },
+      { l: 'Margin Required',  v: '£' + marginRequired.toFixed(2) },
+      { l: 'Margin Remaining', v: '£' + marginRemaining.toFixed(2), w: marginRemaining < 0 },
+    ].forEach(function(r) {
+      html += '<div class="breakdown-row"><span class="lbl">' + r.l + '</span><span class="val' + (r.w ? ' warn' : '') + '">' + r.v + '</span></div>';
+    });
+    html += '</div>';
+
+    out.innerHTML = html;
+    calcPnl();
+    calcComparison();
+  }
+
+  function calcPnl() {
+    var v = getVars();
+    var pnlOut = document.getElementById('pnl-output');
+    if (!v.exit || !v.entry || !v.capital || !v.sl || v.entry === v.sl || !v.risk || !v.lev || !v.pip) {
+      pnlOut.innerHTML = '';
+      return;
+    }
+    var s        = calcStakes(v);
+    var moveDist = v.exit - v.entry;
+    var pnl      = moveDist * s.finalStakes;
+    var isProfit = pnl >= 0;
+    var rr       = Math.abs(pnl / (s.finalStakes * s.stopDist)).toFixed(2);
+    pnlOut.innerHTML = '<div class="pnl-box ' + (isProfit ? 'profit' : 'loss') + '"><div class="pnl-label-inner">' + (isProfit ? '✓ Projected Profit' : '✗ Projected Loss') + '</div><div class="pnl-number">' + (isProfit ? '+' : '') + '£' + pnl.toFixed(2) + '</div><div class="pnl-sub">' + Math.abs(moveDist).toFixed(2) + ' pts · R:R ' + rr + 'R</div></div>';
+    calcComparison();
+  }
+
+  function calcComparison() {
+    var v = getVars();
+    var compOut = document.getElementById('comparison-output');
+    if (!v.custom || !v.entry || !v.capital || !v.sl || v.entry === v.sl || !v.risk || !v.lev || !v.pip) {
+      compOut.innerHTML = '';
+      return;
+    }
+    var s           = calcStakes(v);
+    var customRisk  = v.custom * s.stopDist;
+    var customRiskPct = (customRisk / v.capital * 100).toFixed(2);
+    var hasExit     = !isNaN(v.exit) && v.exit > 0 && v.exit !== v.entry;
+    var moveDist    = hasExit ? (v.exit - v.entry) : 0;
+    var customPnl   = moveDist * v.custom;
+
+    var html = '<div class="section-title" style="margin-top:0">Custom Stake</div><div class="breakdown">';
+    html += '<div class="breakdown-row"><span class="lbl">Stake</span><span class="val">' + v.custom.toFixed(1) + '</span></div>';
+    html += '<div class="breakdown-row"><span class="lbl">Risk</span><span class="val ' + (customRisk > s.riskAmt ? 'warn' : '') + '">£' + customRisk.toFixed(2) + ' (' + customRiskPct + '%)</span></div>';
+    if (hasExit) {
+      var cpIsProfit = customPnl >= 0;
+      html += '<div class="breakdown-row"><span class="lbl">P&L</span><span class="val" style="color:' + (cpIsProfit ? '#22c55e' : '#ef4444') + '">' + (cpIsProfit ? '+' : '') + '£' + customPnl.toFixed(2) + '</span></div>';
+    }
+    html += '</div>';
+    compOut.innerHTML = html;
+  }
+
+  function clearFields() {
+    ['entry','sl','exit','custom-stake'].forEach(function(id) { document.getElementById(id).value = ''; });
+    document.getElementById('output').innerHTML   = '<div class="empty">Fill in entry & stop loss to calculate</div>';
+    document.getElementById('pnl-output').innerHTML        = '';
+    document.getElementById('comparison-output').innerHTML = '';
+    var capital = parseFloat(document.getElementById('capital').value) || 0;
+    var risk    = getActive('risk-btns') ? parseFloat(getActive('risk-btns').getAttribute('data-val')) : 1;
+    document.getElementById('risk-hint').textContent = capital > 0 ? '= £' + (capital * risk / 100).toFixed(2) + ' at risk' : '';
+  }
+</script>
+</body>
+</html>
