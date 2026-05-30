@@ -97,6 +97,14 @@
       <input type="number" inputmode="decimal" id="entry" placeholder="23728.7">
     </div>
     <div class="field">
+      <label>Worst Case Fill <span style="text-transform:none;letter-spacing:0;font-weight:400;font-size:10px">pips slippage</span></label>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px">
+        <input type="range" id="slip-slider" min="0" max="10" value="5" step="1" oninput="updateSlip();go()" style="flex:1;-webkit-appearance:none;appearance:none;height:6px;border-radius:3px;background:linear-gradient(to right,#f97316 50%,#252525 50%);outline:none;cursor:pointer">
+        <div id="slip-val" style="color:#f97316;font-size:20px;font-weight:700;min-width:28px;text-align:right">5</div>
+      </div>
+      <div class="hint" id="slip-hint"></div>
+    </div>
+    <div class="field">
       <label for="sl">Stop Loss Price</label>
       <input type="number" inputmode="decimal" id="sl" placeholder="23691">
     </div>
@@ -129,18 +137,31 @@
     if (gid === 'dir-btns') { el.classList.add(el.getAttribute('data-val') === 'long' ? 'on-long' : 'on-short'); } else { el.classList.add('on'); }
   }
   function active(gid) { return document.querySelector('#'+gid+' .on, #'+gid+' .on-long, #'+gid+' .on-short'); }
+  function updateSlip() {
+    var val = parseInt(document.getElementById('slip-slider').value);
+    document.getElementById('slip-val').textContent = val;
+    var pct = (val / 10) * 100;
+    document.getElementById('slip-slider').style.background = 'linear-gradient(to right,#f97316 ' + pct + '%,#252525 ' + pct + '%)';
+  }
   function vals() {
-    return { cap: parseFloat(document.getElementById('capital').value), en: parseFloat(document.getElementById('entry').value), sl: parseFloat(document.getElementById('sl').value), ex: parseFloat(document.getElementById('exit').value), cust: parseFloat(document.getElementById('custom').value), risk: active('risk-btns') ? parseFloat(active('risk-btns').getAttribute('data-val')) : 1, dir: active('dir-btns') ? active('dir-btns').getAttribute('data-val') : 'long' };
+    var slip = parseInt(document.getElementById('slip-slider').value) || 0;
+    var dir  = active('dir-btns') ? active('dir-btns').getAttribute('data-val') : 'long';
+    var en   = parseFloat(document.getElementById('entry').value);
+    var worstEn = isNaN(en) ? en : (dir === 'long' ? en + slip : en - slip);
+    return { cap: parseFloat(document.getElementById('capital').value), en: en, worstEn: worstEn, slip: slip, sl: parseFloat(document.getElementById('sl').value), ex: parseFloat(document.getElementById('exit').value), cust: parseFloat(document.getElementById('custom').value), risk: active('risk-btns') ? parseFloat(active('risk-btns').getAttribute('data-val')) : 1, dir: dir };
   }
   function stk(v) {
-    var sd = Math.abs(v.en - v.sl), ra = v.cap * v.risk / 100, is = ra / sd, mps = v.en / LEV, mbm = v.cap / mps, cap = is > mbm, fs = Math.floor(Math.min(is, mbm) * 10) / 10;
-    return { sd:sd, ra:ra, is:is, mps:mps, mbm:mbm, cap:cap, fs:fs };
+    var entryForCalc = v.slip > 0 ? v.worstEn : v.en;
+    var sd = Math.abs(entryForCalc - v.sl), ra = v.cap * v.risk / 100, is = ra / sd, mps = entryForCalc / LEV, mbm = v.cap / mps, cap = is > mbm, fs = Math.floor(Math.min(is, mbm) * 10) / 10;
+    return { sd:sd, ra:ra, is:is, mps:mps, mbm:mbm, cap:cap, fs:fs, entryForCalc:entryForCalc };
   }
   function go() {
     var v = vals();
     document.getElementById('risk-hint').textContent = v.cap > 0 ? '= £' + (v.cap * v.risk / 100).toFixed(2) + ' at risk' : '';
     var rc = document.getElementById('results-card');
-    if (!v.cap || !v.en || !v.sl || v.en === v.sl) { rc.innerHTML = '<div class="empty">Fill in entry and stop loss</div>'; return; }
+    if (!v.cap || !v.en || !v.sl || v.en === v.sl) { rc.innerHTML = '<div class="empty">Fill in entry and stop loss</div>'; document.getElementById('slip-hint').textContent = ''; return; }
+    var sh = document.getElementById('slip-hint');
+    sh.textContent = v.slip > 0 ? 'Worst case fill: ' + v.worstEn.toFixed(2) + ' (' + (v.dir==='long'?'+':'-') + v.slip + ' pips)' : 'Using exact entry price';
     var s = stk(v), pips = (s.sd / PIP).toFixed(1), mr = s.fs * s.mps, isLong = v.dir === 'long', html = '';
     if (s.cap) html += '<div class="warning">Ideal stake ' + s.is.toFixed(2) + ' exceeds available margin. Capped to ' + s.fs.toFixed(1) + '.</div>';
     var boxClass = s.cap ? 'capped' : (isLong ? 'ok-long' : 'ok-short');
@@ -148,7 +169,7 @@
     html += '<div class="result-box ' + boxClass + '"><div class="result-label">' + dirLabel + '</div><div class="result-number">' + s.fs.toFixed(1) + '</div><div class="result-sub">Quantity (Stakes)</div></div>';
     html += '<div class="pips-box"><div><div class="pips-label">Stop loss distance</div><div class="pips-sub">Type into cTrader pips field</div></div><div><div class="pips-num">' + pips + '</div><div class="pips-unit">pips</div></div></div>';
     html += '<div class="bk-title">Breakdown</div>';
-    [['Stop distance', s.sd.toFixed(2)+' pts', false],['Risk amount','£'+s.ra.toFixed(2),false],['Ideal stake',s.is.toFixed(2)+(s.cap?' (reduced)':''),s.cap],['Actual risk','£'+(s.fs*s.sd).toFixed(2),false],['Margin used','£'+mr.toFixed(2),false],['Margin free','£'+(v.cap-mr).toFixed(2),v.cap-mr<0]].forEach(function(r) { html += '<div class="bk-row"><span class="bk-lbl">'+r[0]+'</span><span class="bk-val'+(r[2]?' warn':'')+'">'+r[1]+'</span></div>'; });
+    [['Stop distance', s.sd.toFixed(2)+' pts'+(v.slip>0?' (worst)':''), false],['Risk amount','£'+s.ra.toFixed(2),false],['Ideal stake',s.is.toFixed(2)+(s.cap?' (reduced)':''),s.cap],['Actual risk','£'+(s.fs*s.sd).toFixed(2),false],['Margin used','£'+mr.toFixed(2),false],['Margin free','£'+(v.cap-mr).toFixed(2),v.cap-mr<0]].forEach(function(r) { html += '<div class="bk-row"><span class="bk-lbl">'+r[0]+'</span><span class="bk-val'+(r[2]?' warn':'')+'">'+r[1]+'</span></div>'; });
     rc.innerHTML = html;
     pnl(v, s); cmp(v, s);
   }
